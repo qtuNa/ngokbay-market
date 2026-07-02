@@ -36,3 +36,25 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+
+# Secrets & Keys (Đảm bảo không bao giờ đẩy nhầm file cert)
+*.pem
+*.key
+*.crt
+
+# Editor settings (Tránh conflict giữa các thành viên dùng IDE khác nhau)
+.vscode/
+.idea/
+
+# OS/System temporary files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Cấu hình IDE / Database tools (DBeaver, DataGrip)
+.dbeaver/
+.datagrip/
+
+# Log của migration (nếu có)
+migrations/log/
