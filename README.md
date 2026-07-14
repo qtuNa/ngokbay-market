@@ -157,3 +157,102 @@ Learn more about the power of Turborepo:
 - [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
 - [Configuration Options](https://turborepo.dev/docs/reference/configuration)
 - [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+
+--------------------
+# 🛒 Chợ Phiên Ngok Bay - Backend API
+
+Hệ thống Backend API cho nền tảng thương mại điện tử **Chợ Phiên Ngok Bay**, được thiết kế theo kiến trúc Clean Architecture (Repository Pattern) đảm bảo hiệu năng cao, dễ bảo trì và khả năng mở rộng.
+
+## 🛠 Tech Stack
+
+*   **Framework:** [Fastify](https://fastify.dev/) (Tối ưu tốc độ và tài nguyên)
+*   **Ngôn ngữ:** TypeScript (Cấu hình hệ sinh thái ESM / NodeNext)
+*   **Database:** PostgreSQL (Lưu trữ trên Aiven Cloud)
+*   **Caching & Queue:** Redis (Đồng bộ giỏ hàng, Session)
+*   **Database Migrations:** `node-pg-migrate`
+*   **Data Validation:** Zod
+*   **Cấu trúc dự án:** Monorepo (Turborepo)
+
+---
+
+## 🚀 Hướng dẫn Cài đặt & Khởi chạy (Dành cho Developer)
+
+### 1. Yêu cầu hệ thống (Prerequisites)
+*   Node.js phiên bản v22.x trở lên.
+*   Trình quản lý gói: `npm` (hoặc `yarn` / `pnpm` tùy cấu hình monorepo).
+*   Công cụ quản lý Database: DBeaver hoặc DataGrip.
+
+### 2. Cài đặt Dependencies
+Sau khi clone dự án về máy, mở Terminal tại thư mục gốc và chạy:
+```bash
+npm install
+3. Cấu hình Biến môi trường (.env)
+Sao chép file cấu hình mẫu và điền các thông tin kết nối an toàn:
+
+Bash
+cp .env.example .env
+Lưu ý quan trọng cho môi trường Windows (Lỗi SSL 4a):
+Để vượt qua lỗi xác thực chứng chỉ SSL khi kết nối tới Aiven Cloud trên local, đảm bảo chuỗi DATABASE_URL trong file .env của bạn có hậu tố sslmode=no-verify (hoặc cấu hình rejectUnauthorized: false trong config/db.ts).
+
+4. Khởi tạo Database (Migration & Seeding)
+Hệ thống yêu cầu cấu trúc bảng và dữ liệu mồi (Seed data) để hoạt động chính xác. Chạy tuần tự các lệnh sau tại thư mục apps/api:
+
+Tạo cấu trúc bảng mới nhất:
+
+Bash
+npm run migrate:up
+Nạp dữ liệu mồi (Chợ, Sản phẩm mẫu, User mẫu):
+
+Bash
+node scripts/seed.mjs
+Sau khi seed thành công, hãy mở DBeaver để kiểm tra các bảng market_events, products, orders đã có dữ liệu.
+
+5. Khởi chạy Server
+Bash
+npm run dev
+Server sẽ khởi chạy tại http://localhost:3000 (hoặc cổng được định nghĩa trong .env).
+
+📂 Cấu trúc Thư mục (Directory Structure)
+Plaintext
+apps/api/
+├── migrations/          # Chứa các file SQL/JS định nghĩa cấu trúc Database (đuôi .cjs)
+├── scripts/             # Các script chạy nội bộ (seed.mjs, migrate.mjs)
+├── src/
+│   ├── config/          # Cấu hình Database, Redis, Môi trường
+│   ├── repositories/    # Lớp Data Access: Chứa 100% logic truy vấn Database SQL
+│   ├── routes/          # Lớp Controllers: Khai báo API endpoints, điều phối Request/Response
+│   ├── schemas/         # Zod schemas để validation dữ liệu đầu vào
+│   └── index.ts         # Điểm khởi chạy của ứng dụng (App entry point)
+🤝 Quy trình Làm việc Nhóm (Git Workflow & Convention)
+Để đảm bảo chất lượng mã nguồn khi phối hợp phát triển, toàn bộ thành viên vui lòng tuân thủ quy trình sau:
+
+1. Quản lý Nhánh (Branching)
+TUYỆT ĐỐI KHÔNG push code trực tiếp lên nhánh main.
+
+Tạo nhánh mới từ main cho mỗi tính năng hoặc lỗi cần sửa:
+
+Tính năng mới: feature/tên-tính-năng (VD: feature/order-checkout)
+
+Sửa lỗi: bugfix/tên-lỗi (VD: bugfix/cart-sync-error)
+
+2. Tiêu chuẩn Mã nguồn (Coding Convention)
+Repository Pattern: Mọi câu lệnh SQL (pool.query) bắt buộc phải nằm trong thư mục src/repositories/. Thư mục routes/ chỉ dùng để gọi functions từ repository.
+
+Transactions: Mọi luồng nghiệp vụ thay đổi nhiều bảng dữ liệu cùng lúc (VD: Đặt hàng = Tạo đơn + Trừ kho) bắt buộc phải sử dụng BEGIN, COMMIT, ROLLBACK.
+
+Validation: Mọi payload từ Client (request.body, request.query) phải được validate bằng Schema trước khi xử lý.
+
+3. Commit & Pull Request (PR)
+Viết commit message rõ ràng (Sử dụng chuẩn Conventional Commits):
+
+feat: thêm API tích hợp thanh toán
+
+fix: sửa lỗi sai múi giờ khi lưu đơn hàng
+
+chore: cập nhật thư viện node-pg-migrate
+
+Khi hoàn thành code, đẩy nhánh lên GitHub và tạo Pull Request (PR).
+
+Yêu cầu ít nhất 1 thành viên khác Code Review và Approve trước khi Merge vào main.
+
+Documented by [Tên của bạn/Trưởng nhóm] - Được tối ưu hóa cho kiến trúc hiệu năng cao.

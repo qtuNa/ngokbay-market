@@ -1,63 +1,49 @@
-import Fastify, { FastifyReply, FastifyRequest } from "fastify";
-import fastifyJwt from "@fastify/jwt";
+// apps/api/src/index.ts
+// ⚠️  dotenv PHẢI được load TRƯỚC tất cả các import khác
+import 'dotenv/config';
 
-import redisPlugin from "./plugins/redis.js";
-import authRoutes from "./routes/auth-routes.js";
-import { cartRoutes } from "./routes/cart-routes.js";
-import { marketRoutes } from "./routes/market-routes.js";
-import { orderRoutes } from "./routes/order-routes.js";
-import type { JwtUserPayload } from "./types/auth.js";
-
-declare module "@fastify/jwt" {
-  interface FastifyJWT {
-    payload: JwtUserPayload;
-    user: JwtUserPayload;
+// --- Validate biến môi trường bắt buộc ---
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'] as const;
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`[startup] Missing required environment variable: ${key}`);
+    process.exit(1);
   }
 }
 
-declare module "fastify" {
-  interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
+import Fastify from 'fastify';
+import authPlugin from './plugins/auth.js';
+import redisPlugin from './plugins/redis.js';
+import { authRoutes } from './routes/auth-routes.js';
+import { cartRoutes } from './routes/cart-routes.js';
+import { eventRoutes } from './routes/event-routes.js';
+import { marketRoutes } from './routes/market-routes.js';
+import { orderRoutes } from './routes/order-routes.js';
+import { productRoutes } from './routes/product-routes.js';
 
-const jwtSecret = process.env.JWT_SECRET;
+const fastify = Fastify({ logger: true });
 
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET environment variable is required");
-}
-
-const fastify = Fastify({
-  logger: true,
+fastify.get('/health', async (_request, reply) => {
+  reply.code(200).send({ success: true, message: 'ok' });
 });
 
-await fastify.register(fastifyJwt, {
-  secret: jwtSecret,
-});
+async function main() {
+  await fastify.register(authPlugin);
+  await fastify.register(redisPlugin);
+  await fastify.register(authRoutes);
+  await fastify.register(cartRoutes);
+  await fastify.register(marketRoutes);
+  await fastify.register(orderRoutes);
+  await fastify.register(productRoutes);
+  await fastify.register(eventRoutes);
 
-// Định nghĩa decorator authenticate bảo vệ các tuyến đường yêu cầu đăng nhập
-fastify.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.send(err);
-  }
-});
+  const port = Number(process.env.PORT ?? 3001);
+  const host = process.env.HOST ?? '0.0.0.0';
 
-await fastify.register(redisPlugin);
-await fastify.register(authRoutes);
-await fastify.register(cartRoutes);
-await fastify.register(marketRoutes);
-await fastify.register(orderRoutes);
-
-const port = Number(process.env.PORT ?? 3001);
-const host = process.env.HOST ?? "0.0.0.0";
-
-try {
   await fastify.listen({ port, host });
-} catch (error) {
+}
+
+main().catch((error) => {
   fastify.log.error(error);
   process.exit(1);
-}
-
-
+});

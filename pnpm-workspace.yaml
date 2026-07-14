@@ -1,0 +1,8 @@
+packages:
+  # Chỉ định tất cả các ứng dụng trong thư mục apps/
+  - 'apps/*'
+  # Chỉ định tất cả các gói nội bộ trong thư mục packages/
+  - 'packages/*'
+allowBuilds:
+  esbuild: true
+  sharp: true

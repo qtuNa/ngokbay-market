@@ -1,4 +1,4 @@
-import type { Redis } from "ioredis";
+// redis type dùng any để tương thích cả ioredis.Redis lẫn MemoryRedis fallback
 
 import type { OtpRedisRecord, OtpVerificationResult } from "../types/auth.js";
 
@@ -46,7 +46,8 @@ export function parseOtpRedisRecord(raw: string | null): OtpRedisRecord | null {
 }
 
 export async function isPhoneOtpBlocked(
-  redis: Redis,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  redis: any,
   phone: string,
 ): Promise<boolean> {
   const blocked = await redis.get(buildOtpBlockKey(phone));
@@ -54,7 +55,8 @@ export async function isPhoneOtpBlocked(
 }
 
 export async function saveOtpToRedis(
-  redis: Redis,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  redis: any,
   phone: string,
   code: string,
 ): Promise<void> {
@@ -68,7 +70,8 @@ export async function saveOtpToRedis(
 }
 
 export async function verifyOtpFromRedis(
-  redis: Redis,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  redis: any,
   phone: string,
   inputCode: string,
 ): Promise<OtpVerificationResult> {

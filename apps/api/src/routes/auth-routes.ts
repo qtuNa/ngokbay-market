@@ -23,6 +23,7 @@ function badRequest(message: string, code?: string): AuthErrorResponse {
   return { success: false, error: message, code };
 }
 
+// authRoutes là named export — thống nhất với cart/order/product/market routes
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * POST /api/auth/send-otp
@@ -32,7 +33,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     "/api/auth/send-otp",
     async (request, reply) => {
       try {
-        const { phone: rawPhone } = request.body ?? {};
+        const { phone: rawPhone } = (request.body ?? {}) as { phone?: unknown };
 
         if (!rawPhone || typeof rawPhone !== "string") {
           return reply
@@ -103,7 +104,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     "/api/auth/verify-otp",
     async (request, reply) => {
       try {
-        const { phone: rawPhone, otp } = request.body ?? {};
+        const { phone: rawPhone, otp } = (request.body ?? {}) as {
+          phone?: unknown;
+          otp?: unknown;
+        };
 
         if (!rawPhone || typeof rawPhone !== "string") {
           return reply
@@ -207,4 +211,4 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default authRoutes;
+

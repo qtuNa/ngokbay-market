@@ -1,15 +1,11 @@
+// apps/api/src/config/db.ts
+// dotenv được load ở index.ts trước mọi import — không load lại ở đây.
 import { Pool } from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({
-  path: path.resolve(process.cwd(), '.env'),
-  override: true,
-});
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
 });
