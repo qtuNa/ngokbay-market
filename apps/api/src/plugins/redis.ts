@@ -159,16 +159,26 @@ const redisPlugin: FastifyPluginAsync = async (fastify) => {
 
   try {
     const client = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
       lazyConnect: true,
+      enableOfflineQueue: false,
     });
 
+    // Tắt noise ECONNREFUSED trước khi connect() resolve/reject
+    client.on('error', () => {});
+
     await client.connect();
+
+    // Nếu connect thành công, log bình thường
+    client.removeAllListeners('error');
+    client.on('error', (err: Error) => {
+      fastify.log.warn({ err }, 'Redis error');
+    });
+
     redis = client;
     fastify.log.info('Redis connected successfully');
   } catch (error) {
     fastify.log.warn(
-      { err: error },
       'Redis unavailable — falling back to in-memory store (not suitable for production)',
     );
     redis = new MemoryRedis();

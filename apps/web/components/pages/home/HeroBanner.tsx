@@ -106,7 +106,12 @@ export function HeroBanner() {
 
   useEffect(() => {
     fetchApi<{ success: boolean; data: HeroBannerData }>('/api/settings/hero_banner')
-      .then((res) => { if (res.success && res.data) setBanner(res.data); })
+      .then((res) => {
+        if (res.success && res.data) {
+          // Merge với default để không bao giờ có undefined fields
+          setBanner({ ...DEFAULT_BANNER, ...res.data });
+        }
+      })
       .catch(() => {});
   }, []);
 
