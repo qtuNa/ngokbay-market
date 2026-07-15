@@ -20,6 +20,7 @@ import { eventRoutes } from './routes/event-routes.js';
 import { marketRoutes } from './routes/market-routes.js';
 import { orderRoutes } from './routes/order-routes.js';
 import { productRoutes } from './routes/product-routes.js';
+import { settingsRoutes } from './routes/settings-routes.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -36,6 +37,7 @@ async function main() {
   await fastify.register(orderRoutes);
   await fastify.register(productRoutes);
   await fastify.register(eventRoutes);
+  await fastify.register(settingsRoutes);
 
   const port = Number(process.env.PORT ?? 3001);
   const host = process.env.HOST ?? '0.0.0.0';
