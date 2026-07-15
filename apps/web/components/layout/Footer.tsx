@@ -1,92 +1,115 @@
 'use client';
 
 import Link from 'next/link';
+import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from 'lucide-react';
 
 const NAV_LINKS = [
-  { href: '/products',   label: 'Sản phẩm OCOP' },
+  { href: '/',           label: 'Trang chủ' },
+  { href: '/products',   label: 'Sản phẩm' },
   { href: '/van-hoa',    label: 'Văn hóa' },
-  { href: '/tho-cam',    label: 'Thổ cẩm' },
-  { href: '/lich-phien', label: 'Lịch phiên' },
   { href: '/lien-he',    label: 'Liên hệ' },
 ];
 
 export function Footer() {
   return (
     <footer style={{
-      background: 'linear-gradient(180deg, var(--color-surface) 0%, #0f172a 100%)',
-      borderTop: '1px solid var(--color-border)',
-      padding: 'var(--space-16) 0 var(--space-8)',
-      marginTop: 'auto',
+      background: '#1a0f06',
+      borderTop: '3px solid #d97706',
+      color: 'rgba(255,255,255,0.75)',
     }}>
-      <div className="container">
+      <div className="container" style={{ padding: '48px 16px 24px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 'var(--space-10)',
-          marginBottom: 'var(--space-10)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '40px',
+          marginBottom: '36px',
         }}>
           {/* Brand */}
           <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-3)',
-              marginBottom: 'var(--space-4)',
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-gold) 100%)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '1.375rem',
-              }}>
-                N
-              </div>
+                width: '44px', height: '44px',
+                background: 'linear-gradient(135deg, #c2410c, #d97706)',
+                borderRadius: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem',
+              }}>🏪</div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '1.125rem', color: 'white', lineHeight: 1.1 }}>Ngok Bay</div>
-                <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>Chợ phiên bản địa</div>
+                <div style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.15em', color: '#d97706', textTransform: 'uppercase' }}>CHỢ PHIÊN</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'white', lineHeight: 1.1 }}>NGỌK BAY</div>
               </div>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', lineHeight: 1.7, maxWidth: 280 }}>
-              Nền tảng kết nối trực tiếp khách hàng với các tiểu thương, nghệ nhân bản địa người Bana tại các phiên chợ truyền thống vùng cao Quảng Ngãi.
+            <p style={{ fontSize: '0.8125rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.55)', maxWidth: 250 }}>
+              Nền tảng kết nối trực tiếp khách hàng với nghệ nhân bản địa người Bana tại vùng cao Quảng Ngãi.
             </p>
-            {/* Mini stats */}
-            <div style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
+            {/* Social */}
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               {[
-                { num: '3+', label: 'Phiên chợ' },
-                { num: '50+', label: 'Sản phẩm' },
-                { num: '100%', label: 'Bản địa' },
-              ].map((s) => (
-                <div key={s.label}>
-                  <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-gold-light)' }}>{s.num}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{s.label}</div>
+                { icon: Facebook, href: '#', label: 'Facebook' },
+                { icon: Instagram, href: '#', label: 'Instagram' },
+                { icon: Youtube, href: '#', label: 'Youtube' },
+              ].map(({ icon: Icon, href, label }) => (
+                <a key={label} href={href} aria-label={label} style={{
+                  width: 36, height: 36,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.6)',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(217,119,6,0.3)';
+                    (e.currentTarget as HTMLAnchorElement).style.color = '#fbbf24';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.08)';
+                    (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.6)';
+                  }}
+                >
+                  <Icon size={16} />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div>
+            <h3 style={{ fontWeight: 700, color: 'white', fontSize: '0.9375rem', marginBottom: 16, letterSpacing: '0.05em', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+              CONTACT INFO
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { Icon: MapPin, text: 'Làng Ngọk Bay, Kon Tum' },
+                { Icon: Phone, text: 'Hotline: 0987 634 331' },
+                { Icon: Mail, text: 'Email: shop@ngokbay.vn' },
+              ].map(({ Icon, text }) => (
+                <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <Icon size={15} style={{ color: '#d97706', marginTop: 2, flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>{text}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Links */}
+          {/* Social Links */}
           <div>
-            <h3 style={{ fontWeight: 700, color: 'white', marginBottom: 'var(--space-4)', fontSize: '0.9375rem' }}>Điều hướng</h3>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <h3 style={{ fontWeight: 700, color: 'white', fontSize: '0.9375rem', marginBottom: 16, letterSpacing: '0.05em', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+              SOCIAL LINKS
+            </h3>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {NAV_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    style={{
-                      color: 'rgba(255,255,255,0.55)',
-                      fontSize: '0.875rem',
-                      transition: 'color var(--transition-fast)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 'var(--space-2)',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--color-gold-light)'; }}
+                  <Link href={link.href} style={{
+                    fontSize: '0.8125rem',
+                    color: 'rgba(255,255,255,0.55)',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'color 0.15s',
+                  }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#fbbf24'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.55)'; }}
                   >
                     → {link.label}
@@ -96,38 +119,49 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Mini map placeholder */}
           <div>
-            <h3 style={{ fontWeight: 700, color: 'white', marginBottom: 'var(--space-4)', fontSize: '0.9375rem' }}>Liên hệ</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {[
-                { icon: '📍', text: 'Huyện Sơn Hà, Quảng Ngãi' },
-                { icon: '📞', text: '0905 123 456' },
-                { icon: '✉️', text: 'ngokbay.market@gmail.com' },
-              ].map((item) => (
-                <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <span style={{ fontSize: '1rem' }}>{item.icon}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem' }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
+            <h3 style={{ fontWeight: 700, color: 'white', fontSize: '0.9375rem', marginBottom: 16, letterSpacing: '0.05em', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+              VỊ TRÍ
+            </h3>
+            <Link href="/lich-phien">
+              <div style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                height: '120px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 8,
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(217,119,6,0.12)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'; }}
+              >
+                <span style={{ fontSize: '2rem' }}>🗺️</span>
+                <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>Xem bản đồ phiên chợ</span>
+              </div>
+            </Link>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          paddingTop: 'var(--space-6)',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          paddingTop: 20,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: 'var(--space-4)',
+          gap: 12,
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8125rem' }}>
-            © {new Date().getFullYear()} Chợ Phiên Ngok Bay. Bản quyền được bảo hộ.
+          <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+            © {new Date().getFullYear()} Chợ Phiên Ngọk Bay. Bản quyền được bảo hộ.
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>
+          <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)' }}>
             🏔️ Tự hào mang sản phẩm bản địa đến khắp nơi
           </p>
         </div>

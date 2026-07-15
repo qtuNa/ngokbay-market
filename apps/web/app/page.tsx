@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { HeroBanner } from '../components/pages/home/HeroBanner';
-import { CulturalHighlights } from '../components/pages/home/CulturalHighlights';
+import { CategorySection } from '../components/pages/home/CategorySection';
 import { HomeFeaturedProducts } from '../components/pages/home/HomeFeaturedProducts';
+import { CulturalHighlights } from '../components/pages/home/CulturalHighlights';
 import { HomeMapSection } from '../components/pages/home/HomeMapSection';
 
 export const metadata: Metadata = {
-  title: 'Chợ Phiên Ngok Bay — Đặc sản vùng cao Quảng Ngãi',
+  title: 'Chợ Phiên Ngọk Bay — Đặc sản vùng cao Quảng Ngãi',
   description:
     'Nền tảng kết nối trực tiếp khách hàng với các tiểu thương, nghệ nhân bản địa người Bana. Khám phá nông sản OCOP, thổ cẩm và thủ công mỹ nghệ từ vùng cao Quảng Ngãi.',
 };
@@ -13,16 +14,19 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div>
-      {/* 1. Banner lớn (admin chỉnh được) */}
+      {/* 1. Banner lớn với ảnh làng bản */}
       <HeroBanner />
 
-      {/* 2. Giới thiệu sản phẩm văn hóa (câu chuyện) */}
-      <CulturalHighlights />
+      {/* 2. Danh mục sản phẩm (thanh ngang dưới banner) */}
+      <CategorySection />
 
-      {/* 3. Danh sách sản phẩm nổi bật để mua */}
+      {/* 3. Sản phẩm nổi bật */}
       <HomeFeaturedProducts />
 
-      {/* 4. Bản đồ phiên chợ */}
+      {/* 4. Văn hóa & Con người */}
+      <CulturalHighlights />
+
+      {/* 5. Bản đồ phiên chợ */}
       <HomeMapSection />
     </div>
   );
