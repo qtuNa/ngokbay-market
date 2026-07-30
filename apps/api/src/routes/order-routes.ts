@@ -1,160 +1,153 @@
-// apps/api/src/routes/order-routes.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { checkoutSchema, type CheckoutInput } from '@repo/validation';
-import {
-  OrderRepository,
-  ProductNotFoundError,
-  InsufficientStockError,
-} from '../repositories/order.repository.js';
-
-interface GetOrderParams {
-  id: string;
-}
-
-interface GetOrdersQuery {
-  page?: string;
-  limit?: string;
-}
+import { checkoutSchema, CheckoutInput } from '@repo/validation';
+import { OrderRepository } from '../repositories/order.repository.js';
 
 export async function orderRoutes(fastify: FastifyInstance) {
-  /**
-   * POST /api/orders/checkout
-   * Yêu cầu: JWT hợp lệ (bất kỳ role nào)
-   * - Giá được fetch từ DB, không từ client
-   * - Stock được lock bằng SELECT FOR UPDATE
-   */
   fastify.post(
     '/api/orders/checkout',
     { onRequest: [fastify.authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Validation layer
-      const result = checkoutSchema.safeParse(request.body);
-      if (!result.success) {
-        return reply.code(400).send({
-          success: false,
-          message: 'Dữ liệu đơn hàng không hợp lệ',
-          errors: result.error.format(),
-        });
-      }
-
-      const validatedData: CheckoutInput = result.data;
-      const userId = request.user?.sub;
-
-      if (!userId) {
-        return reply.code(401).send({ success: false, message: 'Không tìm thấy thông tin xác thực' });
-      }
-
       try {
-        const productIds = validatedData.items.map((i) => i.product_id);
-
-        // 1. Fetch giá thực từ DB
-        const priceMap = await OrderRepository.fetchProductPrices(productIds);
-
-        // 2. Kiểm tra tất cả sản phẩm có tồn tại và published không
-        const missingProducts = productIds.filter((id) => !priceMap.has(id));
-        if (missingProducts.length > 0) {
-          return reply.code(404).send({
+        // Validation Layer
+        const result = checkoutSchema.safeParse(request.body);
+        if (!result.success) {
+          return reply.code(400).send({
             success: false,
-            message: `Sản phẩm không tồn tại hoặc chưa được đăng bán: ${missingProducts.join(', ')}`,
-            code: 'PRODUCT_NOT_FOUND',
+            message: 'Dữ liệu đơn hàng không hợp lệ',
+            errors: result.error.format()
           });
         }
 
-        // 3. Enrich items với giá từ DB + tính totalAmount server-side
-        const enrichedItems = validatedData.items.map((item) => ({
-          ...item,
-          price: priceMap.get(item.product_id)!,
-        }));
+        const validatedData: CheckoutInput = result.data;
+        
+        // GIỜ ĐÂY: TypeScript tự hiểu request.user có trường .sub dạng string!
+        // Thêm dấu hỏi chấm (?) phòng trường hợp route quên check auth (Type-safety tuyệt đối)
+        const userId = request.user?.sub; 
 
-        const totalAmount = enrichedItems.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0,
-        );
+        if (!userId) {
+          return reply.code(401).send({ success: false, message: 'Không tìm thấy thông tin xác thực' });
+        }
 
-        // 4. DB Transaction: lock stock + tạo đơn hàng
-        const orderId = await OrderRepository.checkout(userId, enrichedItems, totalAmount);
-
-        // 5. Xóa giỏ hàng Redis của user
+        // DB Transaction (giá và tổng tiền tự động tính từ DB)
+        const orderId = await OrderRepository.checkout(userId, validatedData.items);
+        
+        // Clear Redis Cart
         await fastify.redis.del(`cart:user:${userId}`);
 
         return reply.code(201).send({ success: true, orderId, message: 'Đặt hàng thành công' });
-      } catch (err) {
-        if (err instanceof ProductNotFoundError) {
-          return reply.code(404).send({
-            success: false,
-            message: err.message,
-            code: 'PRODUCT_NOT_FOUND',
-          });
-        }
-        if (err instanceof InsufficientStockError) {
-          return reply.code(409).send({
-            success: false,
-            message: err.message,
-            code: 'INSUFFICIENT_STOCK',
-          });
-        }
 
-        fastify.log.error({ err }, 'Lỗi hệ thống khi xử lý đơn hàng');
-        return reply.code(500).send({ success: false, message: 'Lỗi hệ thống khi xử lý đơn hàng' });
+      } catch (err: any) {
+        fastify.log.error(err);
+        return reply.code(400).send({ success: false, message: err.message || 'Lỗi xử lý đơn hàng' });
       }
-    },
+    }
   );
 
   /**
    * GET /api/orders
-   * Lấy danh sách đơn hàng của user (có phân trang)
+   * Lấy danh sách đơn hàng của user đăng nhập
    */
-  fastify.get<{ Querystring: GetOrdersQuery }>(
+  fastify.get(
     '/api/orders',
     { onRequest: [fastify.authenticate] },
-    async (request, reply) => {
-      const userId = request.user?.sub;
-      if (!userId) {
-        return reply.code(401).send({ success: false, message: 'Không tìm thấy thông tin xác thực' });
-      }
-
-      const page = Math.max(1, Number(request.query.page ?? 1));
-      const limit = Math.min(50, Math.max(1, Number(request.query.limit ?? 20)));
-
+    async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const { rows, total } = await OrderRepository.findOrdersByUserId(userId, page, limit);
-        return reply.code(200).send({
-          success: true,
-          data: rows,
-          meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        });
-      } catch (err) {
-        fastify.log.error({ err }, 'Lỗi hệ thống khi lấy danh sách đơn hàng');
-        return reply.code(500).send({ success: false, message: 'Lỗi hệ thống khi lấy danh sách đơn hàng' });
+        const userId = request.user?.sub;
+        if (!userId) {
+          return reply.code(401).send({ success: false, message: 'Chưa đăng nhập' });
+        }
+        const orders = await OrderRepository.findOrdersByUserId(userId);
+        return reply.send({ success: true, data: orders });
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ success: false, message: 'Lỗi tải danh sách đơn hàng' });
       }
-    },
+    }
   );
 
   /**
    * GET /api/orders/:id
-   * Lấy chi tiết đơn hàng (user chỉ thấy đơn của chính mình)
+   * Lấy chi tiết đơn hàng (chỉ chủ sở hữu hoặc admin)
    */
-  fastify.get<{ Params: GetOrderParams }>(
+  fastify.get<{ Params: { id: string } }>(
     '/api/orders/:id',
     { onRequest: [fastify.authenticate] },
     async (request, reply) => {
-      const userId = request.user?.sub;
-      const { id } = request.params;
-
-      if (!userId) {
-        return reply.code(401).send({ success: false, message: 'Không tìm thấy thông tin xác thực' });
-      }
-
       try {
-        const order = await OrderRepository.findOrderById(id, userId);
+        const userId = request.user?.sub;
+        const { id } = request.params;
+        if (!userId) {
+          return reply.code(401).send({ success: false, message: 'Chưa đăng nhập' });
+        }
+        // Cho phép ADMIN xem bất cứ order nào, còn user thường chỉ xem của chính họ
+        const isAdmin = (request.user as any)?.role === 'ADMIN' || (request.user as any)?.role === 'CONTENT_EDITOR';
+        const order = await OrderRepository.findOrderById(id, isAdmin ? undefined : userId);
+
         if (!order) {
           return reply.code(404).send({ success: false, message: 'Không tìm thấy đơn hàng' });
         }
-        return reply.code(200).send({ success: true, data: order });
-      } catch (err) {
-        fastify.log.error({ err }, 'Lỗi hệ thống khi lấy chi tiết đơn hàng');
-        return reply.code(500).send({ success: false, message: 'Lỗi hệ thống khi lấy chi tiết đơn hàng' });
+        return reply.send({ success: true, data: order });
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ success: false, message: 'Lỗi tải chi tiết đơn hàng' });
       }
-    },
+    }
+  );
+
+  /**
+   * GET /api/admin/orders
+   * Yêu cầu: JWT + ADMIN/CONTENT_EDITOR
+   * Lấy toàn bộ đơn hàng
+   */
+  fastify.get<{ Querystring: { status?: string; page?: string; limit?: string } }>(
+    '/api/admin/orders',
+    { onRequest: [fastify.authenticate, fastify.requireRole(['ADMIN', 'CONTENT_EDITOR'])] },
+    async (request, reply) => {
+      try {
+        const { status } = request.query;
+        const page = Math.max(1, Number(request.query.page ?? 1));
+        const limit = Math.min(50, Math.max(1, Number(request.query.limit ?? 20)));
+
+        const result = await OrderRepository.findAllOrders(status, page, limit);
+        return reply.send({
+          success: true,
+          count: result.total,
+          data: result.rows,
+          meta: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+        });
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ success: false, message: 'Lỗi tải danh sách đơn hàng' });
+      }
+    }
+  );
+
+  /**
+   * PATCH /api/admin/orders/:id/status
+   * Yêu cầu: JWT + ADMIN/CONTENT_EDITOR
+   * Cập nhật trạng thái đơn hàng (PENDING -> PROCESSING -> SHIPPING -> DELIVERED -> CANCELLED)
+   */
+  fastify.patch<{ Params: { id: string }; Body: { status: string } }>(
+    '/api/admin/orders/:id/status',
+    { onRequest: [fastify.authenticate, fastify.requireRole(['ADMIN', 'CONTENT_EDITOR'])] },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const { status } = request.body || {};
+
+        if (!status) {
+          return reply.code(400).send({ success: false, message: 'Trạng thái là bắt buộc' });
+        }
+
+        const updated = await OrderRepository.updateOrderStatus(id, status);
+        if (!updated) {
+          return reply.code(404).send({ success: false, message: 'Không tìm thấy đơn hàng' });
+        }
+        return reply.send({ success: true, data: updated, message: 'Cập nhật trạng thái thành công' });
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ success: false, message: 'Lỗi cập nhật trạng thái đơn hàng' });
+      }
+    }
   );
 }

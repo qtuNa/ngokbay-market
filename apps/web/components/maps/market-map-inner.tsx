@@ -67,7 +67,7 @@ export default function MarketMapInner({ markets, center = DEFAULT_CENTER }: Pro
     setDistErr(null);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        setDist(`${calcDistance(coords.latitude, coords.longitude, selected.latitude, selected.longitude)} km`);
+        setDist(`${calcDistance(coords.latitude, coords.longitude, Number(selected.latitude), Number(selected.longitude))} km`);
         setCalc(false);
       },
       () => {
@@ -140,7 +140,7 @@ export default function MarketMapInner({ markets, center = DEFAULT_CENTER }: Pro
             {markets.map((market) => (
               <Marker
                 key={market.id}
-                position={[market.latitude, market.longitude]}
+                position={[Number(market.latitude), Number(market.longitude)]}
                 icon={createMarketIcon()}
                 eventHandlers={{ click: () => { setSelected(market); setDist(null); setDistErr(null); } }}
               >

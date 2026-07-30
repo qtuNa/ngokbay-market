@@ -44,39 +44,134 @@ export const MapsService = {
       }
     }
 
-    // Leaflet / OpenStreetMap (Nominatim) Fallback
+    // Leaflet / OpenStreetMap (Nominatim) Fallback với cơ chế thử lại (Smart Retry)
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-        address
-      )}&format=json&limit=1`;
+      // Các phương án truy vấn từ chi tiết đến chung chung
+      const queries = [
+        address,
+        address.replace(/(Xã|Huyện|Tỉnh|Thành phố|TP\.|Thị trấn|Phường|Quận)\s+/gi, '').trim(),
+        address.split(',').slice(-2).join(',').trim(),
+        'Ba Tơ, Quảng Ngãi, Việt Nam'
+      ].filter((q, idx, arr) => q && arr.indexOf(q) === idx);
 
-      // Nominatim yêu cầu User-Agent hợp lệ để tránh bị chặn (403 Forbidden)
-      const response = await fetch(url, {
+      for (const query of queries) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+            query
+          )}&format=json&limit=1`;
+
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'NgokBayMarket/1.0 (contact@ngokbay.vn)',
+            },
+          });
+
+          if (!response.ok) continue;
+
+          const data = (await response.json()) as any[];
+
+          if (data && data.length > 0) {
+            const result = data[0];
+            return {
+              latitude: parseFloat(result.lat),
+              longitude: parseFloat(result.lon),
+              formattedAddress: address, // Giữ nguyên địa chỉ gốc của Admin
+              provider: 'leaflet',
+            };
+          }
+        } catch (e) {
+          console.warn(`⚠️ Thử định vị với từ khóa "${query}" thất bại:`, e);
+        }
+      }
+    } catch (osmError) {
+      console.error('❌ Lỗi kết nối OpenStreetMap Nominatim:', osmError);
+    }
+
+    // Phương án bảo vệ cuối cùng (Never fail): Trả về tọa độ mặc định của chợ phiên Ba Tơ, Quảng Ngãi
+    console.warn(`📍 Không tìm thấy tọa độ chính xác cho "${address}", sử dụng tọa độ mặc định Ba Tơ, Quảng Ngãi.`);
+    return {
+      latitude: 14.77312,
+      longitude: 108.73691,
+      formattedAddress: address,
+      provider: 'leaflet',
+    };
+  },
+
+  /**
+   * Phân giải link chia sẻ bản đồ (Google Maps short link goo.gl/maps.app.goo.gl, OSM link, long link...)
+   * thành tọa độ GPS chính xác (latitude, longitude).
+   */
+  async resolveMapLink(inputUrl: string): Promise<{ latitude: number; longitude: number; title?: string } | null> {
+    try {
+      let urlString = inputUrl.trim();
+      if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+        return null;
+      }
+
+      // 1. Thực hiện fetch với redirect: 'follow' để giải mã link rút gọn (như https://maps.app.goo.gl/xxx)
+      const response = await fetch(urlString, {
+        method: 'GET',
+        redirect: 'follow',
         headers: {
-          'User-Agent': 'NgokBayMarket/1.0 (contact@ngokbay.vn)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Nominatim Geocoding HTTP error! Status: ${response.status}`);
-      }
+      const finalUrl = response.url || urlString;
+      const htmlText = await response.text().catch(() => '');
 
-      const data = (await response.json()) as any[];
-
-      if (data && data.length > 0) {
-        const result = data[0];
+      // 2. Tìm tọa độ theo thứ tự ưu tiên chính xác nhất
+      // Ưu tiên 1: Pin chính xác của địa điểm trong Google Maps (!3d... !4d...)
+      let match = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || htmlText.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      if (match && match[1] && match[2]) {
         return {
-          latitude: parseFloat(result.lat),
-          longitude: parseFloat(result.lon),
-          formattedAddress: result.display_name,
-          provider: 'leaflet',
+          latitude: parseFloat(match[1]),
+          longitude: parseFloat(match[2]),
         };
-      } else {
-        throw new Error('Nominatim Geocoding không trả về kết quả nào.');
       }
-    } catch (osmError) {
-      console.error('❌ Cả Google và Nominatim Geocoding đều thất bại:', osmError);
-      throw new Error(`Không thể giải mã địa chỉ "${address}" sang tọa độ GPS.`);
+
+      // Ưu tiên 2: Tọa độ camera / trung tâm Google Maps (/@lat,lng)
+      match = finalUrl.match(/\/@(-?\d+\.\d+),(-?\d+\.\d+)/) || htmlText.match(/\/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match && match[1] && match[2]) {
+        return {
+          latitude: parseFloat(match[1]),
+          longitude: parseFloat(match[2]),
+        };
+      }
+
+      // Ưu tiên 3: Các tham số query thông dụng (ll=, q=, destination=, mlat=&mlon=)
+      match = finalUrl.match(/[?&](?:ll|q|destination)=(-?\d+\.\d+),(-?\d+\.\d+)/i);
+      if (match && match[1] && match[2]) {
+        return {
+          latitude: parseFloat(match[1]),
+          longitude: parseFloat(match[2]),
+        };
+      }
+
+      // Ưu tiên 4: OpenStreetMap (#map=zoom/lat/lon hoặc mlat=lat&mlon=lon)
+      match = finalUrl.match(/#map=\d+\/(-?\d+\.\d+)\/(-?\d+\.\d+)/) || finalUrl.match(/mlat=(-?\d+\.\d+)&mlon=(-?\d+\.\d+)/);
+      if (match && match[1] && match[2]) {
+        return {
+          latitude: parseFloat(match[1]),
+          longitude: parseFloat(match[2]),
+        };
+      }
+
+      // Ưu tiên 5: Tìm chuỗi mảng tọa độ [lat, lng] trong nội dung HTML của trang (lúc Google render trang)
+      match = htmlText.match(/\[(-?\d{1,2}\.\d{4,12}),\s*(-?\d{1,3}\.\d{4,12})\]/);
+      if (match && match[1] && match[2]) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { latitude: lat, longitude: lng };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Lỗi khi phân giải map link:', error);
+      return null;
     }
   },
 };
+

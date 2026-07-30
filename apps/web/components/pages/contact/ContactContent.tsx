@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Send, Check, Loader2, Phone, Mail, MapPin, Facebook } from 'lucide-react';
+import { fetchApi } from '../../../src/lib/api';
 
 type ContactType = 'buyer' | 'investor' | 'feedback' | 'partner';
 
@@ -54,6 +55,7 @@ export function ContactContent() {
     message: '',
   });
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const setField = (f: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((p) => ({ ...p, [f]: e.target.value }));
@@ -62,9 +64,17 @@ export function ContactContent() {
     e.preventDefault();
     if (!form.name.trim() || !form.message.trim()) return;
     setStatus('sending');
-    // Simulate submission (thực tế sẽ gọi API khi có endpoint)
-    await new Promise((r) => setTimeout(r, 1500));
-    setStatus('sent');
+    setErrorMsg('');
+    try {
+      await fetchApi('/api/contact', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      setStatus('sent');
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMsg(err.message || 'Có lỗi xảy ra khi gửi tin nhắn.');
+    }
   };
 
   return (
@@ -183,7 +193,7 @@ export function ContactContent() {
 
                 {status === 'error' && (
                   <p style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>
-                    Có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ trực tiếp qua hotline.
+                    {errorMsg || 'Có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ trực tiếp qua hotline.'}
                   </p>
                 )}
 

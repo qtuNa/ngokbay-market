@@ -1,37 +1,9 @@
-// apps/api/src/plugins/redis.ts
-import { Redis } from 'ioredis';
-import type { FastifyPluginAsync } from 'fastify';
-import fp from 'fastify-plugin';
+import { Redis } from "ioredis";
+import type { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 
-// TTL tính bằng milliseconds
-interface TimedEntry {
-  value: string;
-  expiresAt: number | null; // null = no expiry
-}
-
-/**
- * In-memory Redis fallback dùng khi không kết nối được Redis thực.
- * Implement đầy đủ các method cần thiết cho codebase (set, get, del,
- * setex, ttl, hset, hgetall, del, multi pipeline).
- *
- * ⚠️  Chỉ dùng cho dev/test — không persistent và không distributed.
- */
 class MemoryRedis {
-  private store = new Map<string, TimedEntry>();
-
-  private isExpired(entry: TimedEntry): boolean {
-    return entry.expiresAt !== null && Date.now() > entry.expiresAt;
-  }
-
-  private getEntry(key: string): TimedEntry | undefined {
-    const entry = this.store.get(key);
-    if (!entry) return undefined;
-    if (this.isExpired(entry)) {
-      this.store.delete(key);
-      return undefined;
-    }
-    return entry;
-  }
+  private store = new Map<string, string>();
 
   async connect() {
     return undefined;
@@ -41,156 +13,81 @@ class MemoryRedis {
     this.store.clear();
   }
 
-  /** SET key value */
-  async set(key: string, value: string): Promise<'OK'> {
-    this.store.set(key, { value, expiresAt: null });
-    return 'OK';
+  async set(key: string, value: string) {
+    this.store.set(key, value);
+    return "OK";
   }
 
-  /** SET key value EX seconds */
-  async setex(key: string, seconds: number, value: string): Promise<'OK'> {
-    this.store.set(key, { value, expiresAt: Date.now() + seconds * 1000 });
-    return 'OK';
+  async get(key: string) {
+    return this.store.get(key) ?? null;
   }
 
-  /** GET key */
-  async get(key: string): Promise<string | null> {
-    return this.getEntry(key)?.value ?? null;
+  async del(key: string) {
+    this.store.delete(key);
+    return 1;
   }
 
-  /** DEL key [key ...] — hỗ trợ nhiều key */
-  async del(...keys: string[]): Promise<number> {
-    let count = 0;
-    for (const key of keys) {
-      if (this.store.delete(key)) count++;
-    }
-    return count;
-  }
-
-  /** TTL key — trả về giây còn lại, -1 nếu không có TTL, -2 nếu key không tồn tại */
-  async ttl(key: string): Promise<number> {
-    const entry = this.store.get(key);
-    if (!entry || this.isExpired(entry)) return -2;
-    if (entry.expiresAt === null) return -1;
-    return Math.max(0, Math.ceil((entry.expiresAt - Date.now()) / 1000));
-  }
-
-  /** HSET key field value [field value ...] */
-  async hset(key: string, values: Record<string, string>): Promise<number> {
+  async hset(key: string, values: Record<string, string>) {
     for (const [field, value] of Object.entries(values)) {
-      this.store.set(`${key}:${field}`, { value, expiresAt: null });
+      this.store.set(`${key}:${field}`, value);
     }
-    return Object.keys(values).length;
+    return 1;
   }
 
-  /** HGETALL key */
-  async hgetall(key: string): Promise<Record<string, string>> {
+  async hgetall(key: string) {
     const result: Record<string, string> = {};
-    const prefix = `${key}:`;
-    for (const [storedKey, entry] of this.store.entries()) {
-      if (storedKey.startsWith(prefix) && !this.isExpired(entry)) {
-        result[storedKey.slice(prefix.length)] = entry.value;
+    for (const [storedKey, value] of this.store.entries()) {
+      if (storedKey.startsWith(`${key}:`)) {
+        result[storedKey.slice(key.length + 1)] = value;
       }
     }
     return result;
   }
 
-  /** EXPIRE key seconds — đặt TTL cho key đã tồn tại */
-  async expire(key: string, seconds: number): Promise<number> {
-    const entry = this.getEntry(key);
-    if (!entry) return 0;
-    this.store.set(key, { value: entry.value, expiresAt: Date.now() + seconds * 1000 });
-    return 1;
-  }
-
-  /**
-   * MULTI pipeline — trả về một object có thể chain .set/.del/.setex rồi .exec().
-   * Thực thi tuần tự (không atomic như Redis thật, nhưng đủ cho fallback dev).
-   */
-  multi(): MultiBuilder {
-    return new MultiBuilder(this);
+  async setex(key: string, _seconds: number, value: string) {
+    this.store.set(key, value);
+    return "OK";
   }
 }
 
-class MultiBuilder {
-  private commands: Array<() => Promise<unknown>> = [];
-
-  constructor(private readonly redis: MemoryRedis) {}
-
-  del(...keys: string[]): this {
-    this.commands.push(() => this.redis.del(...keys));
-    return this;
-  }
-
-  set(key: string, value: string, exMode?: 'EX', seconds?: number): this {
-    this.commands.push(() =>
-      exMode === 'EX' && seconds !== undefined
-        ? this.redis.setex(key, seconds, value)
-        : this.redis.set(key, value),
-    );
-    return this;
-  }
-
-  setex(key: string, seconds: number, value: string): this {
-    this.commands.push(() => this.redis.setex(key, seconds, value));
-    return this;
-  }
-
-  async exec(): Promise<Array<[null, unknown]>> {
-    const results: Array<[null, unknown]> = [];
-    for (const cmd of this.commands) {
-      results.push([null, await cmd()]);
-    }
-    return results;
-  }
-}
-
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyInstance {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    redis: any; // Redis | MemoryRedis — dùng any để tương thích fallback
+    redis: Redis | MemoryRedis;
   }
 }
 
 const redisPlugin: FastifyPluginAsync = async (fastify) => {
-  const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+  const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
   let redis: Redis | MemoryRedis;
+  let client: Redis | undefined;
 
   try {
-    const client = new Redis(redisUrl, {
+    client = new Redis(redisUrl, {
       maxRetriesPerRequest: 1,
+      retryStrategy: () => null, // Không thử lại liên tục nếu kết nối lỗi
       lazyConnect: true,
-      enableOfflineQueue: false,
     });
 
-    // Tắt noise ECONNREFUSED trước khi connect() resolve/reject
-    client.on('error', () => {});
+    client.on("error", () => {}); // Ngăn node.js văng Unhandled error event
 
     await client.connect();
-
-    // Nếu connect thành công, log bình thường
-    client.removeAllListeners('error');
-    client.on('error', (err: Error) => {
-      fastify.log.warn({ err }, 'Redis error');
-    });
-
     redis = client;
-    fastify.log.info('Redis connected successfully');
+    fastify.log.info("Redis connected");
   } catch (error) {
-    fastify.log.warn(
-      'Redis unavailable — falling back to in-memory store (not suitable for production)',
-    );
+    if (client) {
+      client.disconnect();
+    }
+    fastify.log.warn({ err: error }, "Redis unavailable, falling back to in-memory store");
     redis = new MemoryRedis();
     await redis.connect();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fastify.decorate('redis', redis as any);
+  fastify.decorate("redis", redis as any);
 
-  fastify.addHook('onClose', async () => {
+  fastify.addHook("onClose", async () => {
     await redis.quit();
   });
 };
 
-export default fp(redisPlugin, { name: 'redis' });
+export default fp(redisPlugin, { name: "redis" });

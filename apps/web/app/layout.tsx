@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro } from "next/font/google";
+import { Be_Vietnam_Pro, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "../components/layout/Navbar";
 import { Footer } from "../components/layout/Footer";
@@ -11,9 +11,16 @@ const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-sans",
 });
 
+const playfairDisplay = Playfair_Display({
+  subsets: ["vietnamese", "latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+});
+
 export const metadata: Metadata = {
-  title: "Chợ Phiên Ngok Bay",
-  description: "Nền tảng kết nối trực tiếp khách hàng với các tiểu thương, nghệ nhân bản địa người Bana tại các phiên chợ truyền thống.",
+  title: "Chợ Phiên Ngọk Bay — Tinh Hoa Văn Hóa Bana Quảng Ngãi",
+  description: "Khám phá văn hóa, đặc sản và sản phẩm thủ công truyền thống của người Bana tại vùng cao Ngọk Bay, Quảng Ngãi (Kon Tum cũ). Kết nối trực tiếp với nghệ nhân bản địa.",
 };
 
 export default function RootLayout({
@@ -22,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={beVietnamPro.variable}>
+    <html lang="vi" className={`${beVietnamPro.variable} ${playfairDisplay.variable}`}>
       <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <Navbar />
         <CartDrawer />

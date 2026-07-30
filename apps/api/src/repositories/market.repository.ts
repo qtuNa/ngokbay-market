@@ -30,7 +30,7 @@ export const MarketRepository = {
       // pg_trgm: dùng similarity operator % để fuzzy search tiếng Việt
       // similarity(col, $1) > 0.1 bắt được các lỗi gõ nhỏ
       queryText = `
-        SELECT id, name, address, latitude, longitude, created_at,
+        SELECT id, name, address, latitude, longitude, created_at, opening_hours, start_date, end_date, description, image_url,
                GREATEST(
                  similarity(name, $1),
                  similarity(address, $1)
@@ -47,7 +47,7 @@ export const MarketRepository = {
       params = [search.trim(), `%${search.trim()}%`];
     } else {
       queryText = `
-        SELECT id, name, address, latitude, longitude, created_at
+        SELECT id, name, address, latitude, longitude, created_at, opening_hours, start_date, end_date, description, image_url
         FROM market_events
         ORDER BY name ASC
         LIMIT $1 OFFSET $2
@@ -75,7 +75,7 @@ export const MarketRepository = {
   async findMarketById(id: string): Promise<unknown | null> {
     const { rows } = await pool.query(
       `SELECT
-        id, name, address, latitude, longitude, created_at,
+        id, name, address, latitude, longitude, created_at, opening_hours, start_date, end_date, description, image_url,
         CASE
           WHEN latitude IS NOT NULL AND longitude IS NOT NULL
           THEN 'https://www.google.com/maps/dir/?api=1&destination=' || latitude || ',' || longitude || '&travelmode=driving'
@@ -96,18 +96,74 @@ export const MarketRepository = {
     address: string;
     latitude?: number;
     longitude?: number;
+    opening_hours?: string;
+    start_date?: string;
+    end_date?: string;
+    description?: string;
+    image_url?: string;
   }): Promise<unknown> {
     const { rows } = await pool.query(
-      `INSERT INTO market_events (name, address, latitude, longitude)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO market_events (name, address, latitude, longitude, opening_hours, start_date, end_date, description, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         event.name,
         event.address,
         event.latitude ?? null,
         event.longitude ?? null,
+        event.opening_hours ?? null,
+        event.start_date ?? null,
+        event.end_date ?? null,
+        event.description ?? null,
+        event.image_url ?? null,
       ],
     );
     return rows[0];
   },
+
+  /**
+   * Cập nhật một phiên chợ
+   */
+  async updateMarketEvent(id: string, event: {
+    name?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    opening_hours?: string;
+    start_date?: string;
+    end_date?: string;
+    description?: string;
+    image_url?: string;
+  }): Promise<unknown | null> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (event.name !== undefined) { fields.push(`name = $${idx++}`); values.push(event.name); }
+    if (event.address !== undefined) { fields.push(`address = $${idx++}`); values.push(event.address); }
+    if (event.latitude !== undefined) { fields.push(`latitude = $${idx++}`); values.push(event.latitude); }
+    if (event.longitude !== undefined) { fields.push(`longitude = $${idx++}`); values.push(event.longitude); }
+    if (event.opening_hours !== undefined) { fields.push(`opening_hours = $${idx++}`); values.push(event.opening_hours); }
+    if (event.start_date !== undefined) { fields.push(`start_date = $${idx++}`); values.push(event.start_date); }
+    if (event.end_date !== undefined) { fields.push(`end_date = $${idx++}`); values.push(event.end_date); }
+    if (event.description !== undefined) { fields.push(`description = $${idx++}`); values.push(event.description); }
+    if (event.image_url !== undefined) { fields.push(`image_url = $${idx++}`); values.push(event.image_url); }
+
+    if (fields.length === 0) return null;
+    values.push(id);
+
+    const { rows } = await pool.query(
+      `UPDATE market_events SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values,
+    );
+    return rows[0] ?? null;
+  },
+
+  /**
+   * Xóa một phiên chợ
+   */
+  async deleteMarketEvent(id: string): Promise<boolean> {
+    const { rows } = await pool.query('DELETE FROM market_events WHERE id = $1 RETURNING id', [id]);
+    return rows.length > 0;
+  }
 };

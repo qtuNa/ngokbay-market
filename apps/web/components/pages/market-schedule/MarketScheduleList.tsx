@@ -12,6 +12,11 @@ interface Market {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  opening_hours?: string;
+  start_date?: string;
+  end_date?: string;
+  description?: string;
+  image_url?: string;
   created_at: string;
   maps_url?: string;
 }
@@ -53,25 +58,34 @@ function MarketCard({ market }: { market: Market }) {
         (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-sm)';
       }}
     >
+      {/* Banner image if present */}
+      {market.image_url && (
+        <div style={{ width: '100%', height: '160px', overflow: 'hidden', position: 'relative', background: '#f5efe6' }}>
+          <img src={market.image_url} alt={market.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        </div>
+      )}
+
       {/* Color bar */}
       <div style={{ height: '5px', background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-gold) 100%)' }} />
 
       <div style={{ padding: 'var(--space-6)', flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {/* Icon + Name */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
-          <div style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-gold) 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.375rem',
-            flexShrink: 0,
-          }}>
-            🏪
-          </div>
+          {!market.image_url && (
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-gold) 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.375rem',
+              flexShrink: 0,
+            }}>
+              🏪
+            </div>
+          )}
           <div>
             <h3 style={{ fontWeight: 700, fontSize: '1.0625rem', color: 'var(--color-text)', lineHeight: 1.3 }}>
               {market.name}
@@ -83,22 +97,53 @@ function MarketCard({ market }: { market: Market }) {
           </div>
         </div>
 
+        {/* Opening hours & Dates */}
+        {(market.opening_hours || market.start_date || market.end_date) && (
+          <div style={{
+            background: 'var(--color-background)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-3)',
+            fontSize: '0.8125rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-1)',
+          }}>
+            {market.opening_hours && (
+              <div style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                🕒 {market.opening_hours}
+              </div>
+            )}
+            {(market.start_date || market.end_date) && (
+              <div style={{ color: 'var(--color-text)' }}>
+                📅 {market.start_date || '...'} ➔ {market.end_date || '...'}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Description */}
+        {market.description && (
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {market.description}
+          </p>
+        )}
+
         {/* Coords */}
         {market.latitude && market.longitude && (
           <div style={{
             background: 'var(--color-background)',
             borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-3)',
+            padding: 'var(--space-2) var(--space-3)',
             fontSize: '0.75rem',
             color: 'var(--color-text-muted)',
             fontFamily: 'monospace',
           }}>
-            {Number(market.latitude).toFixed(4)}°N, {Number(market.longitude).toFixed(4)}°E
+            📍 {Number(market.latitude).toFixed(4)}°N, {Number(market.longitude).toFixed(4)}°E
           </div>
         )}
 
         {/* Added date */}
-        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
           Cập nhật: {new Date(market.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
         </p>
 

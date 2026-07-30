@@ -25,6 +25,7 @@ export function Navbar() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const cartItemCount = items.reduce((t, i) => t + i.quantity, 0);
 
@@ -36,6 +37,18 @@ export function Navbar() {
     return () => window.removeEventListener('auth-change', handle);
   }, [loadFromStorage]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleLogout = () => {
     logout();
     window.dispatchEvent(new Event('auth-change'));
@@ -43,7 +56,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className={styles.navbar}>
+      <header className={`${styles.navbar} ${scrolled ? styles.scrolled : ''}`}>
         <div className={styles.topBar}>
           <span className={styles.topBarText}>🏔️ Chợ Phiên Ngok Bay · Huyện Sơn Hà, Quảng Ngãi</span>
           <div className={styles.topBarRight}>

@@ -23,7 +23,6 @@ function badRequest(message: string, code?: string): AuthErrorResponse {
   return { success: false, error: message, code };
 }
 
-// authRoutes là named export — thống nhất với cart/order/product/market routes
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * POST /api/auth/send-otp
@@ -86,7 +85,8 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
           success: true,
           message: "Ma OTP da duoc gui toi so dien thoai cua ban",
           expiresIn: OTP_TTL_SECONDS,
-        });
+          dev_otp: process.env.NODE_ENV !== "production" ? otpCode : undefined,
+        } as any);
       } catch (error) {
         fastify.log.error({ err: error }, "Loi he thong khi gui OTP");
         return reply
@@ -211,4 +211,4 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-
+export default authRoutes;

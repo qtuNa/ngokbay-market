@@ -2,15 +2,13 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
-import type { JwtUserPayload, UserRole } from '../types/auth.js';
+import type { JwtUserPayload } from '../types/auth.js';
 
 export default fp(async (fastify: FastifyInstance) => {
-  // JWT_SECRET được validate ở index.ts — đây sẽ không bao giờ là undefined khi vào đây
-  const secret = process.env.JWT_SECRET!;
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'super-secret-ngok-bay-key-2026'
+  });
 
-  await fastify.register(jwt, { secret });
-
-  /** Xác thực JWT — reject 401 nếu token không hợp lệ hoặc hết hạn */
   fastify.decorate(
     'authenticate',
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -20,44 +18,24 @@ export default fp(async (fastify: FastifyInstance) => {
       } catch {
         return reply.code(401).send({
           success: false,
-          message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
+          message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'
         });
       }
-    },
+    }
   );
 
-  /**
-   * Kiểm tra quyền theo role — dùng sau `authenticate`.
-   * Trả về 403 Forbidden nếu role không nằm trong danh sách cho phép.
-   *
-   * Dùng:
-   *   { onRequest: [fastify.authenticate, fastify.requireRole(['ADMIN'])] }
-   */
   fastify.decorate(
     'requireRole',
-    (allowedRoles: UserRole[]) =>
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        if (!request.user || !allowedRoles.includes(request.user.role)) {
+    (roles: string[]) => {
+      return async (request: FastifyRequest, reply: FastifyReply) => {
+        if (!request.user || !roles.includes(request.user.role)) {
           return reply.code(403).send({
             success: false,
-            message: 'Bạn không có quyền thực hiện hành động này.',
-            code: 'FORBIDDEN',
+            message: 'Bạn không có quyền thực hiện hành động này.'
           });
         }
-      },
-  );
-
-  /** Xác thực tùy chọn — không reject nếu không có token, chỉ populate request.user nếu có */
-  fastify.decorate(
-    'optionalAuthenticate',
-    async (request: FastifyRequest, _reply: FastifyReply) => {
-      try {
-        const decoded = await request.jwtVerify<JwtUserPayload>();
-        request.user = decoded;
-      } catch {
-        // Không có token hoặc token không hợp lệ — bỏ qua, request.user sẽ là undefined
-      }
-    },
+      };
+    }
   );
 });
 
@@ -75,7 +53,6 @@ declare module 'fastify' {
 
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireRole: (roles: UserRole[]) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    optionalAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireRole: (roles: string[]) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }

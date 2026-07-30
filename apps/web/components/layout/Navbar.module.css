@@ -6,8 +6,16 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #2c1a0e;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  background: #1c1208; /* Deep earth brown background at top */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
+}
+
+.scrolled {
+  background: rgba(28, 18, 8, 0.75) !important; /* Semi-transparent */
+  backdrop-filter: blur(12px); /* Frosted glass effect */
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .topBar {

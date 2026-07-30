@@ -19,7 +19,9 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
   const guestSessionId = typeof window !== 'undefined' ? localStorage.getItem('guest_session_id') : null;
 
   const finalHeaders = new Headers(headers);
-  finalHeaders.set('Content-Type', 'application/json');
+  if (restOptions.body && !finalHeaders.has('Content-Type')) {
+    finalHeaders.set('Content-Type', 'application/json');
+  }
 
   if (requireAuth) {
     if (!token) {
@@ -36,8 +38,15 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
     finalHeaders.set('x-guest-session-id', guestSessionId);
   }
 
-  // Dùng relative path — Next.js rewrites sẽ proxy /api/* → port 3002
-  const response = await fetch(endpoint, {
+  // Dùng relative path trên client — Next.js rewrites sẽ proxy /api/* → port 3002.
+  // Trên server-side (SSR / Server Component), fetch() của Node.js bắt buộc phải là URL tuyệt đối.
+  let url = endpoint;
+  if (typeof window === 'undefined' && endpoint.startsWith('/')) {
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3002').replace('localhost', '127.0.0.1');
+    url = `${baseUrl}${endpoint}`;
+  }
+
+  const response = await fetch(url, {
     headers: finalHeaders,
     ...restOptions,
   });

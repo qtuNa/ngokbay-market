@@ -8,17 +8,16 @@ import { ArrowLeft } from 'lucide-react';
 import { Product } from '../../../components/products/ProductCard';
 
 interface ProductPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 // Lấy thông tin chi tiết của 1 sản phẩm dựa trên slug/id
 async function getProduct(slug: string): Promise<Product | null> {
   try {
     const response = await fetchApi<{ success: boolean; data: Product }>(`/api/products/${slug}`, {
-      // Revalidate every 60 seconds (hoặc tuỳ chiến lược Next.js cache)
-      next: { revalidate: 60 } 
+      cache: 'no-store'
     });
     return response.success ? response.data : null;
   } catch (error) {
@@ -29,7 +28,8 @@ async function getProduct(slug: string): Promise<Product | null> {
 
 // Tạo metadata động (SEO)
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = await getProduct(params.slug);
+  const { slug } = await params;
+  const product = await getProduct(slug);
   
   if (!product) {
     return {
@@ -44,7 +44,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 }
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
-  const product = await getProduct(params.slug);
+  const { slug } = await params;
+  const product = await getProduct(slug);
 
   if (!product) {
     return (
